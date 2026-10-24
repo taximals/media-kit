@@ -1,122 +1,197 @@
-const { chromium } = require("playwright");
 const fs = require("node:fs/promises");
+const crypto = require("node:crypto");
+
+const TOKEN_FILE = ".twitch-state.enc";
+
+function required(name) {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(`Missing GitHub secret: ${name}`);
+  }
+
+  return value;
+}
 
 async function main() {
-  const browser = await chromium.launch();
-  let page;
+  const clientId = required("TWITCH_CLIENT_ID");
+  const clientSecret = required("TWITCH_CLIENT_SECRET");
+  const initialRefreshToken = required("TWITCH_REFRESH_TOKEN");
 
-  try {
-    page = await browser.newPage();
-    page.setDefaultTimeout(60000);
+  // Keep saved tokens encrypted and outside the public website.
+  const key = crypto
+    .createHash("sha256")
+    .update(clientSecret)
+    .digest();
 
-    await page.goto("https://beacons.ai/taximals/mediakit", {
-      waitUntil: "domcontentloaded",
-      timeout: 60000
-    });
+  async function saveTokens(tokens) {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
 
-    // Twitch is the default section. Wait for its stats to load.
-    await page.waitForFunction(
-      () => {
-        const text = document.body.innerText;
-        return (
-          /AVG CONCURRENT VIEWERS/i.test(text) &&
-          /30 DAY WATCH HOURS/i.test(text)
-        );
-      },
-      { timeout: 60000 }
-    );
-
-    const text = await page.locator("body").innerText();
-
-    function read(label) {
-      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const match = text.match(
-        new RegExp(
-          escaped + "\\s+([\\d,.]+\\s*[kKmM]?)",
-          "i"
-        )
-      );
-
-      if (!match) {
-        throw new Error("Could not read: " + label);
-      }
-
-      return match[1].trim();
-    }
-
-    // Limit the follower search to the Twitch summary.
-    const summaryStart = text.search(/AVG STREAM VIEWS/i);
-    const precedingText = text.slice(0, summaryStart);
-    const followerMatches = [
-      ...precedingText.matchAll(
-        /\bFOLLOWERS\s+([\d,.]+\s*[kKmM]?)/gi
-      )
-    ];
-
-    if (!followerMatches.length) {
-      throw new Error("Could not read Twitch followers");
-    }
-
-    const followers = followerMatches.at(-1)[1].trim();
-
-    const sync = text.match(
-      /Data from last 30 days\s*\/\s*Last updated\s+([^\n]+)/i
-    );
-
-    const data = {
-      collectedAt: new Date().toISOString(),
-      beaconsUpdated: sync ? sync[1].trim() : "Not specified",
-      stats: [
-        {
-          label: "Twitch followers",
-          value: followers
-        },
-        {
-          label: "Average concurrent viewers",
-          value: read("AVG CONCURRENT VIEWERS")
-        },
-        {
-          label: "Maximum concurrent viewers",
-          value: read("MAX CONCURRENT VIEWERS")
-        },
-        {
-          label: "Hours streamed",
-          value: read("TOTAL HOURS STREAMED")
-        },
-        {
-          label: "30-day watch hours",
-          value: read("30 DAY WATCH HOURS")
-        }
-      ]
-    };
-
-    await fs.mkdir("public", { recursive: true });
+    const encrypted = Buffer.concat([
+      cipher.update(JSON.stringify(tokens), "utf8"),
+      cipher.final()
+    ]);
 
     await fs.writeFile(
-      "public/data.json",
-      JSON.stringify(data, null, 2)
+      TOKEN_FILE,
+      Buffer.concat([iv, cipher.getAuthTag(), encrypted])
+    );
+  }
+
+  let tokens;
+
+  try {
+    const saved = await fs.readFile(TOKEN_FILE);
+    const decipher = crypto.createDecipheriv(
+      "aes-256-gcm",
+      key,
+      saved.subarray(0, 12)
     );
 
-    console.log("Collected stats successfully:");
-    console.log(JSON.stringify(data, null, 2));
+    decipher.setAuthTag(saved.subarray(12, 28));
+
+    tokens = JSON.parse(
+      Buffer.concat([
+        decipher.update(saved.subarray(28)),
+        decipher.final()
+      ]).toString("utf8")
+    );
   } catch (error) {
-    // Show what actually loaded if the stats were unavailable.
-    if (page) {
-      console.error("Page URL:", page.url());
-      console.error(
-        "Page text:",
-        (await page.locator("body").innerText()
-          .catch(() => "Unable to read page")).slice(0, 12000)
+    if (error.code !== "ENOENT") {
+      throw new Error("Could not decrypt saved Twitch tokens.");
+    }
+
+    tokens = { refresh_token: initialRefreshToken };
+  }
+
+  function mask(value) {
+    if (process.env.GITHUB_ACTIONS && value) {
+      console.log(`::add-mask::${value}`);
+    }
+  }
+
+  mask(tokens.access_token);
+  mask(tokens.refresh_token);
+
+  async function refresh() {
+    const response = await fetch(
+      "https://id.twitch.tv/oauth2/token",
+      {
+        method: "POST",
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: tokens.refresh_token
+        }),
+        signal: AbortSignal.timeout(30000)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Twitch token refresh failed (${response.status}). ` +
+        "Your Twitch authorisation may need renewing."
       );
     }
 
-    throw error;
-  } finally {
-    await browser.close();
+    const result = await response.json();
+
+    if (!result.access_token || !result.refresh_token) {
+      throw new Error("Twitch returned an incomplete token response.");
+    }
+
+    mask(result.access_token);
+    mask(result.refresh_token);
+
+    tokens = {
+      access_token: result.access_token,
+      refresh_token: result.refresh_token
+    };
+
+    await saveTokens(tokens);
   }
+
+  if (!tokens.access_token) {
+    await refresh();
+  }
+
+  async function api(path) {
+    async function request() {
+      return fetch(`https://api.twitch.tv/helix/${path}`, {
+        headers: {
+          "Client-Id": clientId,
+          Authorization: `Bearer ${tokens.access_token}`
+        },
+        signal: AbortSignal.timeout(30000)
+      });
+    }
+
+    let response = await request();
+
+    if (response.status === 401) {
+      await refresh();
+      response = await request();
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Twitch API request failed (${response.status}): ` +
+        path.split("?")[0]
+      );
+    }
+
+    return response.json();
+  }
+
+  const users = await api("users?login=taximals");
+  const user = users.data?.[0];
+
+  if (!user) {
+    throw new Error("Could not find the taximals Twitch channel.");
+  }
+
+  const followers = await api(
+    `channels/followers?broadcaster_id=${user.id}&first=1`
+  );
+
+  const subscriptions = await api(
+    `subscriptions?broadcaster_id=${user.id}&first=1`
+  );
+
+  if (
+    !Number.isInteger(followers.total) ||
+    !Number.isInteger(subscriptions.total)
+  ) {
+    throw new Error("Twitch did not return valid follower/subscriber totals.");
+  }
+
+  const data = {
+    collectedAt: new Date().toISOString(),
+    source: "Twitch API",
+    stats: [
+      {
+        label: "Twitch followers",
+        value: followers.total.toLocaleString("en-AU")
+      },
+      {
+        label: "Twitch subscribers",
+        value: subscriptions.total.toLocaleString("en-AU")
+      }
+    ]
+  };
+
+  await fs.mkdir("public", { recursive: true });
+  await fs.writeFile(
+    "public/data.json",
+    JSON.stringify(data, null, 2)
+  );
+
+  console.log("Collected Twitch follower and subscriber totals.");
 }
 
 main().catch(error => {
-  console.error(error);
+  console.error(error.message);
   process.exitCode = 1;
 });
