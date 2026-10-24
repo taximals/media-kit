@@ -1,0 +1,54 @@
+name: Update media kit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 22 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: media-kit-pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install collector
+        run: npm install --no-save playwright@1.56.1
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Collect Beacons stats
+        run: node collect.cjs
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload widget
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Publish widget
+        id: deployment
+        uses: actions/deploy-pages@v4
