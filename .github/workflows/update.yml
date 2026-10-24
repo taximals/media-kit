@@ -105,6 +105,9 @@ jobs:
           path: .tiktok-state.enc
           key: tiktok-tokens-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
+      - name: Collect Bluesky stats
+        run: node bluesky.cjs
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
