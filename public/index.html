@@ -177,6 +177,20 @@
         ],
         timestamp: "tiktokCollectedAt",
         source: "TikTok API"
+      },
+      {
+        id: "bluesky",
+        title: "Bluesky",
+        handle: "@taximals.bsky.social",
+        url: "https://bsky.app/profile/taximals.bsky.social",
+        mainStat: "Bluesky followers",
+        unit: "followers",
+        details: [
+          ["Posts", "Bluesky posts"],
+          ["Following", "Bluesky following"]
+        ],
+        timestamp: "blueskyCollectedAt",
+        source: "Bluesky API"
       }
     ];
 
@@ -208,10 +222,12 @@
 
     function addDetail(container, label, value) {
       const item = element("span");
+
       item.append(
         document.createTextNode(label + " "),
         element("strong", "", value)
       );
+
       container.append(item);
     }
 
@@ -336,7 +352,7 @@
 
       if (
         automaticResult.status === "fulfilled" &&
-        Array.isArray(automaticResult.value.stats)
+        Array.isArray(automaticResult.value?.stats)
       ) {
         data = automaticResult.value;
         automaticAvailable = true;
