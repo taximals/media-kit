@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Taximals — Twitch Stats</title>
+  <title>Taximals — Media Kit Stats</title>
 
   <style>
     * {
@@ -23,61 +23,96 @@
       margin: 0 auto;
     }
 
-    h1 {
-      margin: 0 0 8px;
-      font-size: 23px;
-    }
-
-    p {
-      color: #dddddd;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-
-    #stats {
+    .panels {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin: 20px 0;
+      gap: 14px;
     }
 
-    .card {
+    .panel {
       min-width: 0;
+      padding: 20px;
       background: #2f2f2f;
       border: 1px solid #942e3a;
-      border-top: 4px solid #c13545;
-      border-radius: 10px;
-      padding: 20px;
+      border-left: 5px solid #c13545;
+      border-radius: 14px;
     }
 
-    .value {
-      margin-bottom: 8px;
-      font-size: 30px;
-      font-weight: bold;
-      overflow-wrap: anywhere;
+    .heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
     }
 
-    .label {
-      color: #dddddd;
-      font-size: 12px;
-      line-height: 1.5;
+    h2 {
+      margin: 0;
+      font-size: 14px;
     }
 
     a {
       color: #ffadb7;
+      font-size: 11px;
+      text-decoration: none;
     }
 
     a:hover {
+      text-decoration: underline;
+    }
+
+    .number {
+      font-size: 32px;
+      font-weight: bold;
+      overflow-wrap: anywhere;
+    }
+
+    .unit {
+      margin-top: 4px;
+      color: #dddddd;
+      font-size: 12px;
+    }
+
+    .details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-top: 18px;
+      color: #dddddd;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .details strong {
       color: #ffffff;
     }
 
-    @media (max-width: 420px) {
-      .card {
-        padding: 14px;
+    .note {
+      margin: 12px 0 0;
+      color: #cccccc;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    #status {
+      margin: 12px 0 0;
+      color: #dddddd;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 520px) {
+      .panels {
+        grid-template-columns: 1fr;
       }
 
-      .value {
-        font-size: 25px;
+      .panel {
+        padding: 16px;
       }
     }
   </style>
@@ -85,90 +120,224 @@
 
 <body>
   <main>
-    <h1>taximals · Twitch</h1>
-    <p>Current follower and subscriber totals</p>
+    <div class="panels">
+      <section class="panel" aria-labelledby="twitch-title">
+        <div class="heading">
+          <h2 id="twitch-title">Twitch</h2>
+          <a
+            href="https://www.twitch.tv/taximals"
+            target="_blank"
+            rel="noopener noreferrer"
+          >@taximals</a>
+        </div>
 
-    <div id="stats"></div>
+        <div class="number" id="twitch-followers">—</div>
+        <div class="unit">followers</div>
 
-    <p id="updated" role="status">Loading stats…</p>
+        <div class="details">
+          <span id="twitch-subs-row" hidden>
+            Subscribers <strong id="twitch-subs">—</strong>
+          </span>
 
-    <p>
-      <a
-        href="https://www.twitch.tv/taximals"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Visit my Twitch channel
-      </a>
-    </p>
+          <span id="twitch-average-row" hidden>
+            Avg concurrent viewers
+            <strong id="twitch-average">—</strong>
+          </span>
+        </div>
+
+        <p class="note" id="twitch-manual-note" hidden></p>
+        <p class="note" id="twitch-updated"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="youtube-title">
+        <div class="heading">
+          <h2 id="youtube-title">YouTube</h2>
+          <a
+            href="https://www.youtube.com/@taximalsvt"
+            target="_blank"
+            rel="noopener noreferrer"
+          >@taximalsvt</a>
+        </div>
+
+        <div class="number" id="youtube-subs">—</div>
+        <div class="unit">subscribers</div>
+
+        <div class="details">
+          <span id="youtube-views-row" hidden>
+            Total views <strong id="youtube-views">—</strong>
+          </span>
+
+          <span id="youtube-videos-row" hidden>
+            Public videos <strong id="youtube-videos">—</strong>
+          </span>
+        </div>
+
+        <p class="note">Subscriber count rounded by YouTube.</p>
+        <p class="note" id="youtube-updated"></p>
+      </section>
+    </div>
+
+    <p id="status" role="status">Loading stats…</p>
   </main>
 
   <script>
-    async function loadStats() {
-      const status = document.getElementById("updated");
-      const container = document.getElementById("stats");
+    async function getJSON(path) {
+      const response = await fetch(path, {
+        cache: "no-cache"
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to load " + path);
+      }
+
+      return response.json();
+    }
+
+    function displayStat(stats, label, valueId, rowId) {
+      const stat = stats.find(item => item.label === label);
+
+      if (!stat || stat.value == null) {
+        return false;
+      }
+
+      document.getElementById(valueId).textContent = stat.value;
+
+      if (rowId) {
+        document.getElementById(rowId).hidden = false;
+      }
+
+      return true;
+    }
+
+    function showUpdate(elementId, timestamp, source) {
+      const element = document.getElementById(elementId);
+      const date = timestamp ? new Date(timestamp) : null;
+
+      if (!date || Number.isNaN(date.getTime())) {
+        element.textContent = "Source: " + source;
+        return;
+      }
+
+      const formatted = date.toLocaleString("en-AU", {
+        timeZone: "Australia/Brisbane",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+
+      element.textContent =
+        source + " · Updated " + formatted + " AEST";
+    }
+
+    async function loadAutomaticStats() {
+      const status = document.getElementById("status");
 
       try {
-        const response = await fetch("data.json", {
-          cache: "no-cache"
-        });
+        const data = await getJSON("data.json");
 
-        if (!response.ok) {
-          throw new Error("Stats unavailable");
+        if (!Array.isArray(data.stats)) {
+          throw new Error("Invalid stats format");
         }
 
-        const data = await response.json();
+        const hasTwitch = displayStat(
+          data.stats,
+          "Twitch followers",
+          "twitch-followers"
+        );
 
-        if (!Array.isArray(data.stats) || data.stats.length === 0) {
-          throw new Error("No stats found");
+        displayStat(
+          data.stats,
+          "Twitch subscribers",
+          "twitch-subs",
+          "twitch-subs-row"
+        );
+
+        const hasYouTube = displayStat(
+          data.stats,
+          "YouTube subscribers",
+          "youtube-subs"
+        );
+
+        displayStat(
+          data.stats,
+          "YouTube total views",
+          "youtube-views",
+          "youtube-views-row"
+        );
+
+        displayStat(
+          data.stats,
+          "YouTube public videos",
+          "youtube-videos",
+          "youtube-videos-row"
+        );
+
+        showUpdate(
+          "twitch-updated",
+          data.collectedAt,
+          "Twitch API"
+        );
+
+        showUpdate(
+          "youtube-updated",
+          data.youtubeCollectedAt,
+          "YouTube Data API"
+        );
+
+        if (hasTwitch && hasYouTube) {
+          status.textContent = "";
+        } else {
+          status.textContent =
+            "Some stats are unavailable. Missing values appear as —.";
         }
-
-        const collectedAt = new Date(data.collectedAt);
-
-        if (Number.isNaN(collectedAt.getTime())) {
-          throw new Error("Invalid update date");
-        }
-
-        const cards = document.createDocumentFragment();
-
-        for (const stat of data.stats) {
-          const card = document.createElement("div");
-          card.className = "card";
-
-          const value = document.createElement("div");
-          value.className = "value";
-          value.textContent = stat.value;
-
-          const label = document.createElement("div");
-          label.className = "label";
-          label.textContent = stat.label;
-
-          card.append(value, label);
-          cards.append(card);
-        }
-
-        container.replaceChildren(cards);
-
-        const collected = collectedAt.toLocaleString("en-AU", {
-          timeZone: "Australia/Brisbane",
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit"
-        });
-
-        status.textContent =
-          "Source: Twitch · Updated: " + collected + " AEST";
       } catch (error) {
-        container.replaceChildren();
-
         status.textContent =
-          "Stats are currently unavailable. Please visit my Twitch channel below.";
+          "Automatic stats are currently unavailable.";
       }
     }
 
-    loadStats();
+    async function loadManualStats() {
+      try {
+        const data = await getJSON("manual.json");
+        const average = data.averageConcurrentViewers;
+
+        if (
+          typeof average !== "number" ||
+          !Number.isFinite(average) ||
+          average < 0
+        ) {
+          return;
+        }
+
+        document.getElementById("twitch-average").textContent =
+          average.toLocaleString("en-AU", {
+            maximumFractionDigits: 2
+          });
+
+        document.getElementById("twitch-average-row").hidden = false;
+
+        const details = [
+          "Average: " + (data.period || "period not specified"),
+          "manually entered"
+        ];
+
+        if (data.updated) {
+          details.push("checked " + data.updated);
+        }
+
+        const note = document.getElementById("twitch-manual-note");
+        note.textContent = details.join(" · ");
+        note.hidden = false;
+      } catch (error) {
+        // The manual file is optional.
+        // Automatic stats still display if it is missing.
+      }
+    }
+
+    loadAutomaticStats();
+    loadManualStats();
   </script>
 </body>
 </html>
