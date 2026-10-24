@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>TikTok Connection</title>
+</head>
+<body>
+  <h1>TikTok connection</h1>
+  <p id="message">This page receives your TikTok authorisation.</p>
+
+  <script>
+    const parameters = new URLSearchParams(location.search);
+
+    if (parameters.has("error")) {
+      document.getElementById("message").textContent =
+        "TikTok authorisation was unsuccessful. Return to the setup instructions.";
+    } else if (parameters.has("code")) {
+      document.getElementById("message").textContent =
+        "Authorisation code received. Keep this tab open and return to the setup instructions. Do not share this page's address.";
+    }
+  </script>
+</body>
+</html>
