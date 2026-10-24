@@ -378,8 +378,9 @@
       panels.push(renderTwitter(manual));
       container.replaceChildren(...panels);
 
-      // One audience count per platform, including YouTube subscribers.
-      // Twitch paid subscribers are not added a second time.
+      // One audience count per platform.
+      // Includes YouTube subscribers.
+      // Does not add Twitch paid subscribers separately.
       const audienceCounts = platforms.map(platform =>
         parseCount(stats.get(platform.mainStat))
       );
@@ -392,7 +393,6 @@
         value => value !== null
       );
 
-      // Only display a total when all six counts are available.
       document.getElementById("total").textContent = complete
         ? audienceCounts.reduce(
             (sum, count) => sum + count,
@@ -409,6 +409,73 @@
       document.getElementById("status").textContent =
         "Unable to display audience stats. Please try again later.";
     });
+  </script>
+
+  <script>
+    (() => {
+      const main = document.querySelector("main");
+      if (!main) return;
+
+      let lastHeight = 0;
+
+      function reportHeight(force = false) {
+        const style = getComputedStyle(document.body);
+
+        const height = Math.ceil(
+          main.getBoundingClientRect().height +
+          (parseFloat(style.paddingTop) || 0) +
+          (parseFloat(style.paddingBottom) || 0)
+        );
+
+        if (height < 1) return;
+        if (!force && height === lastHeight) return;
+
+        lastHeight = height;
+
+        window.parent.postMessage(
+          {
+            type: "taximals-widget-height",
+            height: height
+          },
+          "*"
+        );
+      }
+
+      if (window.ResizeObserver) {
+        new ResizeObserver(() => {
+          reportHeight();
+        }).observe(main);
+      }
+
+      window.addEventListener("resize", () => {
+        reportHeight();
+      });
+
+      window.addEventListener("load", () => {
+        reportHeight(true);
+      });
+
+      window.addEventListener("pageshow", () => {
+        reportHeight(true);
+      });
+
+      window.addEventListener("message", event => {
+        if (
+          event.source === window.parent &&
+          event.data?.type === "taximals-request-height"
+        ) {
+          reportHeight(true);
+        }
+      });
+
+      if (document.fonts?.ready) {
+        document.fonts.ready.then(() => {
+          reportHeight(true);
+        });
+      }
+
+      reportHeight(true);
+    })();
   </script>
 </body>
 </html>
