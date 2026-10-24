@@ -220,6 +220,25 @@
       return node;
     }
 
+    function createPanel(titleText, handle, url, id) {
+      const panel = element("section", "panel");
+      const heading = element("div", "heading");
+      const title = element("h2", "", titleText);
+
+      title.id = id + "-title";
+      panel.setAttribute("aria-labelledby", title.id);
+
+      const link = element("a", "", handle);
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+
+      heading.append(title, link);
+      panel.append(heading);
+
+      return panel;
+    }
+
     function addDetail(container, label, value) {
       const item = element("span");
 
@@ -251,22 +270,14 @@
     }
 
     function renderPanel(platform, data, stats, manual) {
-      const panel = element("section", "panel");
-      const heading = element("div", "heading");
-
-      const title = element("h2", "", platform.title);
-      title.id = platform.id + "-title";
-      panel.setAttribute("aria-labelledby", title.id);
-
-      const link = element("a", "", platform.handle);
-      link.href = platform.url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-
-      heading.append(title, link);
+      const panel = createPanel(
+        platform.title,
+        platform.handle,
+        platform.url,
+        platform.id
+      );
 
       panel.append(
-        heading,
         element(
           "div",
           "number",
@@ -337,6 +348,55 @@
       return panel;
     }
 
+    function renderTwitter(manual) {
+      const twitter = manual?.twitter;
+
+      const suppliedUsername =
+        typeof twitter?.username === "string"
+          ? twitter.username.trim().replace(/^@/, "")
+          : "";
+
+      const username = /^[A-Za-z0-9_]{1,15}$/.test(suppliedUsername)
+        ? suppliedUsername
+        : "taximalsVT";
+
+      const panel = createPanel(
+        "X / Twitter",
+        "@" + username,
+        "https://x.com/" + username,
+        "twitter"
+      );
+
+      const followers = twitter?.followers;
+
+      const validFollowers =
+        Number.isSafeInteger(followers) &&
+        followers >= 0;
+
+      panel.append(
+        element(
+          "div",
+          "number",
+          validFollowers
+            ? followers.toLocaleString("en-AU")
+            : "—"
+        ),
+        element("div", "unit", "followers")
+      );
+
+      let note = validFollowers
+        ? "Manually entered"
+        : "Follower count not entered yet.";
+
+      if (validFollowers && twitter.updated) {
+        note += " · Checked " + twitter.updated;
+      }
+
+      panel.append(element("p", "note", note));
+
+      return panel;
+    }
+
     async function load() {
       const status = document.getElementById("status");
       const container = document.getElementById("panels");
@@ -379,6 +439,7 @@
         renderPanel(platform, data, stats, manual)
       );
 
+      panels.push(renderTwitter(manual));
       container.replaceChildren(...panels);
 
       if (!automaticAvailable) {
@@ -388,7 +449,7 @@
         platforms.some(platform => !stats.has(platform.mainStat))
       ) {
         status.textContent =
-          "Some stats are unavailable. Missing values appear as —.";
+          "Some automatic stats are unavailable. Missing values appear as —.";
       } else {
         status.textContent = "";
       }
