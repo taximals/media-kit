@@ -12,10 +12,9 @@
 
   <style>
     :root {
-      --panel: transparent;
       --border: #942E3A;
       --text: #ffffff;
-      --muted: #c7bcc0;
+      --muted: #d3c9cc;
     }
 
     * {
@@ -29,7 +28,7 @@
 
     body {
       margin: 0;
-      padding: 12px;
+      padding: 4px;
       color: var(--text);
       font-family: "Comfortaa", sans-serif;
       -webkit-font-smoothing: antialiased;
@@ -41,86 +40,94 @@
     }
 
     .summary {
-      margin-bottom: 16px;
-      padding: 26px 20px;
-      background: var(--panel);
+      margin-bottom: 10px;
+      padding: 15px 10px;
       border: 3px solid var(--border);
-      border-radius: 12px;
+      border-radius: 10px;
       text-align: center;
     }
 
     .total {
-      font-size: clamp(36px, 6vw, 48px);
+      font-size: 32px;
       font-weight: 700;
       line-height: 1.2;
-      letter-spacing: -1px;
+      letter-spacing: -0.7px;
       font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
     }
 
     .summary-title {
-      margin: 10px 0 0;
-      font-size: 14px;
+      margin: 7px 0 0;
+      font-size: 11px;
       font-weight: 400;
-      line-height: 1.6;
+      line-height: 1.5;
     }
 
     .panels {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      align-items: stretch;
     }
 
     .panel {
       min-width: 0;
-      padding: 20px;
-      background: var(--panel);
+      padding: 12px 10px;
       border: 3px solid var(--border);
-      border-radius: 12px;
+      border-radius: 10px;
     }
 
     h2 {
-      margin: 0 0 20px;
-      font-size: 14px;
+      margin: 0 0 10px;
+      font-size: 11px;
       font-weight: 700;
       line-height: 1.5;
     }
 
     .number {
-      font-size: 30px;
+      font-size: 24px;
       font-weight: 700;
-      line-height: 1.3;
+      line-height: 1.25;
       letter-spacing: -0.5px;
       font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
     }
 
     .unit {
-      margin-top: 5px;
+      margin-top: 3px;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10px;
       line-height: 1.5;
     }
 
     .details {
       display: flex;
-      flex-wrap: wrap;
-      gap: 7px 16px;
-      margin-top: 18px;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: 10px;
       color: var(--muted);
-      font-size: 11px;
-      line-height: 1.8;
+      font-size: 9px;
+      line-height: 1.6;
     }
 
-    .details strong {
+    .detail {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 3px 5px;
+    }
+
+    .detail strong {
       color: var(--text);
       font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
     }
 
     #status {
-      margin: 12px 0 0;
+      margin: 10px 0 0;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10px;
       line-height: 1.6;
     }
 
@@ -128,20 +135,25 @@
       display: none;
     }
 
-    @media (max-width: 850px) {
+    @media (min-width: 720px) {
       .panels {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .panel {
+        padding: 14px;
+      }
+
+      .details {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 5px 12px;
       }
     }
 
-    @media (max-width: 480px) {
+    @media (max-width: 260px) {
       .panels {
         grid-template-columns: 1fr;
-      }
-
-      .summary,
-      .panel {
-        padding: 18px;
       }
     }
   </style>
@@ -151,7 +163,6 @@
   <main>
     <section class="summary" aria-labelledby="summary-title">
       <div class="total" id="total">—</div>
-
       <h1 class="summary-title" id="summary-title">
         Total followers across platforms
       </h1>
@@ -225,13 +236,8 @@
     function element(tag, className, text) {
       const node = document.createElement(tag);
 
-      if (className) {
-        node.className = className;
-      }
-
-      if (text !== undefined) {
-        node.textContent = text;
-      }
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
 
       return node;
     }
@@ -243,15 +249,10 @@
           : null;
       }
 
-      if (typeof value !== "string") {
-        return null;
-      }
+      if (typeof value !== "string") return null;
 
       const cleaned = value.replace(/[,\s]/g, "");
-
-      if (!/^\d+$/.test(cleaned)) {
-        return null;
-      }
+      if (!/^\d+$/.test(cleaned)) return null;
 
       const count = Number(cleaned);
 
@@ -278,10 +279,10 @@
     }
 
     function addDetail(container, label, value) {
-      const item = element("span");
+      const item = element("span", "detail");
 
       item.append(
-        document.createTextNode(label + " "),
+        element("span", "", label),
         element("strong", "", value)
       );
 
@@ -289,10 +290,7 @@
     }
 
     function renderPanel(platform, stats, manual) {
-      const panel = createPanel(
-        platform.title,
-        platform.id
-      );
+      const panel = createPanel(platform.title, platform.id);
 
       panel.append(
         element(
@@ -331,9 +329,7 @@
         }
       }
 
-      if (details.childElementCount) {
-        panel.append(details);
-      }
+      if (details.childElementCount) panel.append(details);
 
       return panel;
     }
@@ -389,9 +385,9 @@
       panels.push(renderTwitter(manual));
       container.replaceChildren(...panels);
 
-      // One audience count per platform.
-      // Includes YouTube subscribers.
-      // Does not add Twitch paid subscribers separately.
+      // Add one audience count per platform.
+      // YouTube subscribers are included.
+      // Twitch paid subscribers are not added separately.
       const audienceCounts = platforms.map(platform =>
         parseCount(stats.get(platform.mainStat))
       );
@@ -453,22 +449,12 @@
       }
 
       if (window.ResizeObserver) {
-        new ResizeObserver(() => {
-          reportHeight();
-        }).observe(main);
+        new ResizeObserver(() => reportHeight()).observe(main);
       }
 
-      window.addEventListener("resize", () => {
-        reportHeight();
-      });
-
-      window.addEventListener("load", () => {
-        reportHeight(true);
-      });
-
-      window.addEventListener("pageshow", () => {
-        reportHeight(true);
-      });
+      window.addEventListener("resize", () => reportHeight());
+      window.addEventListener("load", () => reportHeight(true));
+      window.addEventListener("pageshow", () => reportHeight(true));
 
       window.addEventListener("message", event => {
         if (
@@ -480,9 +466,7 @@
       });
 
       if (document.fonts?.ready) {
-        document.fonts.ready.then(() => {
-          reportHeight(true);
-        });
+        document.fonts.ready.then(() => reportHeight(true));
       }
 
       reportHeight(true);
