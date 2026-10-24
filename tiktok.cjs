@@ -98,12 +98,16 @@ async function main() {
     "https://open.tiktokapis.com/v2/oauth/token/",
     {
       method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Cache-Control": "no-cache"
+      },
       body: new URLSearchParams({
         client_key: clientKey,
         client_secret: clientSecret,
         grant_type: "refresh_token",
         refresh_token: state.refreshToken
-      }),
+      }).toString(),
       signal: AbortSignal.timeout(30000)
     }
   );
