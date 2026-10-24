@@ -31,6 +31,7 @@
       padding: 4px;
       color: var(--text);
       font-family: "Comfortaa", sans-serif;
+      font-size: 16px;
       -webkit-font-smoothing: antialiased;
     }
 
@@ -48,7 +49,7 @@
     }
 
     .total {
-      font-size: 32px;
+      font-size: 2em;
       font-weight: 700;
       line-height: 1.2;
       letter-spacing: -0.7px;
@@ -58,9 +59,9 @@
 
     .summary-title {
       margin: 7px 0 0;
-      font-size: 11px;
+      font-size: 0.625em;
       font-weight: 400;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
     .panels {
@@ -79,34 +80,40 @@
 
     h2 {
       margin: 0 0 10px;
-      font-size: 11px;
+      font-size: 0.625em;
       font-weight: 700;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+
+    .audience {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 3px 6px;
     }
 
     .number {
-      font-size: 24px;
+      font-size: 1.375em;
       font-weight: 700;
-      line-height: 1.25;
+      line-height: 1.3;
       letter-spacing: -0.5px;
       font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
     }
 
     .unit {
-      margin-top: 3px;
       color: var(--muted);
-      font-size: 10px;
-      line-height: 1.5;
+      font-size: 0.625em;
+      line-height: 1.6;
     }
 
     .details {
       display: flex;
       flex-direction: column;
       gap: 3px;
-      margin-top: 10px;
+      margin-top: 9px;
       color: var(--muted);
-      font-size: 9px;
+      font-size: 0.625em;
       line-height: 1.6;
     }
 
@@ -127,7 +134,7 @@
     #status {
       margin: 10px 0 0;
       color: var(--muted);
-      font-size: 10px;
+      font-size: 0.625em;
       line-height: 1.6;
     }
 
@@ -278,6 +285,17 @@
       return panel;
     }
 
+    function addAudience(panel, value, unit) {
+      const audience = element("div", "audience");
+
+      audience.append(
+        element("span", "number", formatCount(value)),
+        element("span", "unit", unit)
+      );
+
+      panel.append(audience);
+    }
+
     function addDetail(container, label, value) {
       const item = element("span", "detail");
 
@@ -292,13 +310,10 @@
     function renderPanel(platform, stats, manual) {
       const panel = createPanel(platform.title, platform.id);
 
-      panel.append(
-        element(
-          "div",
-          "number",
-          formatCount(parseCount(stats.get(platform.mainStat)))
-        ),
-        element("div", "unit", platform.unit)
+      addAudience(
+        panel,
+        parseCount(stats.get(platform.mainStat)),
+        platform.unit
       );
 
       const details = element("div", "details");
@@ -337,13 +352,10 @@
     function renderTwitter(manual) {
       const panel = createPanel("X / Twitter", "twitter");
 
-      panel.append(
-        element(
-          "div",
-          "number",
-          formatCount(parseCount(manual?.twitter?.followers))
-        ),
-        element("div", "unit", "followers")
+      addAudience(
+        panel,
+        parseCount(manual?.twitter?.followers),
+        "followers"
       );
 
       return panel;
@@ -385,9 +397,6 @@
       panels.push(renderTwitter(manual));
       container.replaceChildren(...panels);
 
-      // Add one audience count per platform.
-      // YouTube subscribers are included.
-      // Twitch paid subscribers are not added separately.
       const audienceCounts = platforms.map(platform =>
         parseCount(stats.get(platform.mainStat))
       );
