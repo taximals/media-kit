@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Taximals — Twitch stats</title>
+
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 16px;
+    background: transparent;
+    color: #fff;
+    font-family: Verdana, sans-serif;
+  }
+
+  main {
+    max-width: 850px;
+    margin: auto;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 23px;
+  }
+
+  p {
+    color: #ddd;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  #stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .card {
+    background: #2f2f2f;
+    border: 1px solid #942e3a;
+    border-top: 4px solid #c13545;
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .value {
+    font-size: 30px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+
+  .label {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #ddd;
+  }
+
+  a { color: #ffadb7; }
+
+  @media (max-width: 420px) {
+    .card { padding: 14px; }
+    .value { font-size: 25px; }
+  }
+</style>
+</head>
+
+<body>
+<main>
+  <h1>taximals · Twitch</h1>
+  <p>Stream performance · last 30 days</p>
+
+  <div id="stats"></div>
+  <p id="updated">Loading stats…</p>
+
+  <p>
+    <a href="https://beacons.ai/taximals/mediakit"
+       target="_blank" rel="noopener">
+      View full media kit
+    </a>
+  </p>
+</main>
+
+<script>
+async function load() {
+  const status = document.getElementById("updated");
+
+  try {
+    const response = await fetch("data.json", { cache: "no-cache" });
+    if (!response.ok) throw new Error("Stats unavailable");
+
+    const data = await response.json();
+    const container = document.getElementById("stats");
+
+    for (const stat of data.stats) {
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const value = document.createElement("div");
+      value.className = "value";
+      value.textContent = stat.value;
+
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = stat.label;
+
+      card.append(value, label);
+      container.append(card);
+    }
+
+    const collected = new Date(data.collectedAt).toLocaleString(
+      "en-AU",
+      { timeZone: "Australia/Brisbane" }
+    );
+
+    status.textContent =
+      "Beacons last updated: " + data.beaconsUpdated +
+      " · Collected: " + collected + " AEST";
+  } catch (error) {
+    status.textContent =
+      "Stats are unavailable. Please use the full media kit link below.";
+  }
+}
+
+load();
+</script>
+</body>
+</html>
