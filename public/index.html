@@ -19,13 +19,13 @@
     }
 
     main {
-      max-width: 850px;
+      max-width: 1000px;
       margin: 0 auto;
     }
 
     .panels {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
     }
 
@@ -106,6 +106,12 @@
       display: none !important;
     }
 
+    @media (max-width: 760px) {
+      .panels {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
     @media (max-width: 520px) {
       .panels {
         grid-template-columns: 1fr;
@@ -174,6 +180,28 @@
 
         <p class="note">Subscriber count rounded by YouTube.</p>
         <p class="note" id="youtube-updated"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="instagram-title">
+        <div class="heading">
+          <h2 id="instagram-title">Instagram</h2>
+          <a
+            href="https://www.instagram.com/taximalsvt/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >@taximalsvt</a>
+        </div>
+
+        <div class="number" id="instagram-followers">—</div>
+        <div class="unit">followers</div>
+
+        <div class="details">
+          <span id="instagram-posts-row" hidden>
+            Posts <strong id="instagram-posts">—</strong>
+          </span>
+        </div>
+
+        <p class="note" id="instagram-updated"></p>
       </section>
     </div>
 
@@ -274,6 +302,19 @@
           "youtube-videos-row"
         );
 
+        const hasInstagram = displayStat(
+          data.stats,
+          "Instagram followers",
+          "instagram-followers"
+        );
+
+        displayStat(
+          data.stats,
+          "Instagram posts",
+          "instagram-posts",
+          "instagram-posts-row"
+        );
+
         showUpdate(
           "twitch-updated",
           data.collectedAt,
@@ -286,12 +327,16 @@
           "YouTube Data API"
         );
 
-        if (hasTwitch && hasYouTube) {
-          status.textContent = "";
-        } else {
-          status.textContent =
-            "Some stats are unavailable. Missing values appear as —.";
-        }
+        showUpdate(
+          "instagram-updated",
+          data.instagramCollectedAt,
+          "Instagram API"
+        );
+
+        status.textContent =
+          hasTwitch && hasYouTube && hasInstagram
+            ? ""
+            : "Some stats are unavailable. Missing values appear as —.";
       } catch (error) {
         status.textContent =
           "Automatic stats are currently unavailable.";
@@ -331,8 +376,7 @@
         note.textContent = details.join(" · ");
         note.hidden = false;
       } catch (error) {
-        // The manual file is optional.
-        // Automatic stats still display if it is missing.
+        // Manual stats are optional.
       }
     }
 
