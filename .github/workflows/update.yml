@@ -43,6 +43,14 @@ jobs:
           restore-keys: |
             twitch-tokens-v1-
 
+      - name: Restore encrypted Instagram token
+        uses: actions/cache/restore@v4
+        with:
+          path: .instagram-state.enc
+          key: instagram-token-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            instagram-token-v1-
+
       - name: Collect Twitch stats
         env:
           TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
@@ -62,10 +70,18 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: node youtube.cjs
 
-      - name: Collect Instagram stats
+      - name: Collect Instagram stats and renew token when due
         env:
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
         run: node instagram.cjs
+
+      - name: Save encrypted Instagram token
+        if: ${{ always() && hashFiles('.instagram-state.enc') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .instagram-state.enc
+          key: instagram-token-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
