@@ -3,113 +3,174 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Taximals — Media Kit Stats</title>
+  <title>Taximals — Audience</title>
 
   <style>
+    :root {
+      --panel: #292929;
+      --border: #494043;
+      --accent: #c13545;
+      --text: #ffffff;
+      --muted: #c7bcc0;
+    }
+
     * {
       box-sizing: border-box;
     }
 
     body {
       margin: 0;
-      padding: 16px;
+      padding: 12px;
       background: transparent;
-      color: #ffffff;
+      color: var(--text);
       font-family: Verdana, sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
 
     main {
-      max-width: 1000px;
+      max-width: 1100px;
       margin: 0 auto;
+    }
+
+    .summary {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px 24px;
+      margin-bottom: 16px;
+      padding: 24px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--accent);
+      border-radius: 12px;
+    }
+
+    .total {
+      font-size: clamp(32px, 6vw, 46px);
+      font-weight: bold;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-title {
+      margin: 0 0 7px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .summary-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
     }
 
     .panels {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
     }
 
     .panel {
       min-width: 0;
       padding: 20px;
-      background: #2f2f2f;
-      border: 1px solid #942e3a;
-      border-left: 5px solid #c13545;
-      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
     }
 
     .heading {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: baseline;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 7px 12px;
       margin-bottom: 20px;
     }
 
     h2 {
       margin: 0;
-      font-size: 14px;
+      font-size: 13px;
+      font-weight: bold;
     }
 
-    a {
-      color: #ffadb7;
-      font-size: 11px;
-      overflow-wrap: anywhere;
+    .handle {
+      color: var(--muted);
+      font-size: 10px;
       text-decoration: none;
+      overflow-wrap: anywhere;
     }
 
-    a:hover {
+    .handle:hover {
+      color: #ffffff;
       text-decoration: underline;
     }
 
+    .handle:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+    }
+
     .number {
-      font-size: 32px;
+      font-size: 30px;
       font-weight: bold;
+      line-height: 1.2;
+      letter-spacing: -0.8px;
+      font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
     }
 
     .unit {
-      margin-top: 4px;
-      color: #dddddd;
-      font-size: 12px;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
     }
 
     .details {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 16px;
+      gap: 7px 16px;
       margin-top: 18px;
-      color: #dddddd;
+      color: var(--muted);
       font-size: 11px;
       line-height: 1.7;
     }
 
     .details strong {
-      color: #ffffff;
-    }
-
-    .note {
-      margin: 12px 0 0;
-      color: #cccccc;
-      font-size: 10px;
-      line-height: 1.6;
+      color: var(--text);
+      font-weight: bold;
     }
 
     #status {
       margin: 12px 0 0;
-      color: #dddddd;
+      color: var(--muted);
       font-size: 11px;
       line-height: 1.6;
     }
 
-    @media (max-width: 520px) {
+    #status:empty {
+      display: none;
+    }
+
+    @media (max-width: 850px) {
+      .panels {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 480px) {
       .panels {
         grid-template-columns: 1fr;
       }
 
+      .summary,
       .panel {
-        padding: 16px;
+        padding: 18px;
+      }
+
+      .summary {
+        gap: 12px;
       }
     }
   </style>
@@ -117,8 +178,22 @@
 
 <body>
   <main>
+    <section class="summary" aria-labelledby="summary-title">
+      <div class="total" id="total">—</div>
+
+      <div>
+        <h1 class="summary-title" id="summary-title">
+          Total followers across platforms
+        </h1>
+
+        <p class="summary-note" id="total-note">
+          Followers + YouTube subscribers · audiences may overlap
+        </p>
+      </div>
+    </section>
+
     <div class="panels" id="panels"></div>
-    <p id="status" role="status">Loading stats…</p>
+    <p id="status" role="status">Loading audience stats…</p>
   </main>
 
   <script>
@@ -132,9 +207,7 @@
         unit: "followers",
         details: [
           ["Subscribers", "Twitch subscribers"]
-        ],
-        timestamp: "collectedAt",
-        source: "Twitch API"
+        ]
       },
       {
         id: "youtube",
@@ -144,12 +217,9 @@
         mainStat: "YouTube subscribers",
         unit: "subscribers",
         details: [
-          ["Total views", "YouTube total views"],
-          ["Public videos", "YouTube public videos"]
-        ],
-        timestamp: "youtubeCollectedAt",
-        source: "YouTube Data API",
-        note: "Subscriber count rounded by YouTube."
+          ["Views", "YouTube total views"],
+          ["Videos", "YouTube public videos"]
+        ]
       },
       {
         id: "instagram",
@@ -160,9 +230,7 @@
         unit: "followers",
         details: [
           ["Posts", "Instagram posts"]
-        ],
-        timestamp: "instagramCollectedAt",
-        source: "Instagram API"
+        ]
       },
       {
         id: "tiktok",
@@ -172,11 +240,9 @@
         mainStat: "TikTok followers",
         unit: "followers",
         details: [
-          ["Total likes", "TikTok total likes"],
-          ["Public videos", "TikTok public videos"]
-        ],
-        timestamp: "tiktokCollectedAt",
-        source: "TikTok API"
+          ["Likes", "TikTok total likes"],
+          ["Videos", "TikTok public videos"]
+        ]
       },
       {
         id: "bluesky",
@@ -188,9 +254,7 @@
         details: [
           ["Posts", "Bluesky posts"],
           ["Following", "Bluesky following"]
-        ],
-        timestamp: "blueskyCollectedAt",
-        source: "Bluesky API"
+        ]
       }
     ];
 
@@ -220,6 +284,38 @@
       return node;
     }
 
+    // Collectors save whole numbers formatted with commas.
+    // Invalid or missing values remain missing rather than becoming zero.
+    function parseCount(value) {
+      if (typeof value === "number") {
+        return Number.isSafeInteger(value) && value >= 0
+          ? value
+          : null;
+      }
+
+      if (typeof value !== "string") {
+        return null;
+      }
+
+      const cleaned = value.replace(/[,\s]/g, "");
+
+      if (!/^\d+$/.test(cleaned)) {
+        return null;
+      }
+
+      const count = Number(cleaned);
+
+      return Number.isSafeInteger(count) && count >= 0
+        ? count
+        : null;
+    }
+
+    function formatCount(value) {
+      return value === null
+        ? "—"
+        : value.toLocaleString("en-AU");
+    }
+
     function createPanel(titleText, handle, url, id) {
       const panel = element("section", "panel");
       const heading = element("div", "heading");
@@ -228,7 +324,7 @@
       title.id = id + "-title";
       panel.setAttribute("aria-labelledby", title.id);
 
-      const link = element("a", "", handle);
+      const link = element("a", "handle", handle);
       link.href = url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
@@ -250,26 +346,7 @@
       container.append(item);
     }
 
-    function updateText(timestamp, source) {
-      const date = timestamp ? new Date(timestamp) : null;
-
-      if (!date || Number.isNaN(date.getTime())) {
-        return "Source: " + source;
-      }
-
-      const formatted = date.toLocaleString("en-AU", {
-        timeZone: "Australia/Brisbane",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit"
-      });
-
-      return source + " · Updated " + formatted + " AEST";
-    }
-
-    function renderPanel(platform, data, stats, manual) {
+    function renderPanel(platform, stats, manual) {
       const panel = createPanel(
         platform.title,
         platform.handle,
@@ -281,7 +358,7 @@
         element(
           "div",
           "number",
-          stats.get(platform.mainStat) ?? "—"
+          formatCount(parseCount(stats.get(platform.mainStat)))
         ),
         element("div", "unit", platform.unit)
       );
@@ -289,61 +366,39 @@
       const details = element("div", "details");
 
       for (const [label, key] of platform.details) {
-        if (stats.has(key)) {
-          addDetail(details, label, stats.get(key));
+        const value = parseCount(stats.get(key));
+
+        if (value !== null) {
+          addDetail(details, label, formatCount(value));
         }
       }
 
-      let manualNote;
-
-      if (platform.id === "twitch" && manual) {
-        const average = manual.averageConcurrentViewers;
+      if (platform.id === "twitch") {
+        const average = manual?.averageConcurrentViewers;
 
         if (
           typeof average === "number" &&
           Number.isFinite(average) &&
           average >= 0
         ) {
+          const period =
+            typeof manual.period === "string" && manual.period.trim()
+              ? manual.period.trim()
+              : "period unspecified";
+
           addDetail(
             details,
-            "Avg concurrent viewers",
+            "Avg viewers (" + period + ")",
             average.toLocaleString("en-AU", {
               maximumFractionDigits: 2
             })
           );
-
-          const notes = [
-            "Average: " + (manual.period || "period not specified"),
-            "manually entered"
-          ];
-
-          if (manual.updated) {
-            notes.push("checked " + manual.updated);
-          }
-
-          manualNote = notes.join(" · ");
         }
       }
 
       if (details.childElementCount) {
         panel.append(details);
       }
-
-      if (manualNote) {
-        panel.append(element("p", "note", manualNote));
-      }
-
-      if (platform.note) {
-        panel.append(element("p", "note", platform.note));
-      }
-
-      panel.append(
-        element(
-          "p",
-          "note",
-          updateText(data[platform.timestamp], platform.source)
-        )
-      );
 
       return panel;
     }
@@ -367,32 +422,14 @@
         "twitter"
       );
 
-      const followers = twitter?.followers;
-
-      const validFollowers =
-        Number.isSafeInteger(followers) &&
-        followers >= 0;
-
       panel.append(
         element(
           "div",
           "number",
-          validFollowers
-            ? followers.toLocaleString("en-AU")
-            : "—"
+          formatCount(parseCount(twitter?.followers))
         ),
         element("div", "unit", "followers")
       );
-
-      let note = validFollowers
-        ? "Manually entered"
-        : "Follower count not entered yet.";
-
-      if (validFollowers && twitter.updated) {
-        note += " · Checked " + twitter.updated;
-      }
-
-      panel.append(element("p", "note", note));
 
       return panel;
     }
@@ -407,16 +444,11 @@
           getJSON("manual.json")
         ]);
 
-      let data = { stats: [] };
-      let automaticAvailable = false;
-
-      if (
+      const data =
         automaticResult.status === "fulfilled" &&
         Array.isArray(automaticResult.value?.stats)
-      ) {
-        data = automaticResult.value;
-        automaticAvailable = true;
-      }
+          ? automaticResult.value
+          : { stats: [] };
 
       const manual =
         manualResult.status === "fulfilled"
@@ -426,38 +458,59 @@
       const stats = new Map();
 
       for (const stat of data.stats) {
-        if (
-          stat &&
-          typeof stat.label === "string" &&
-          stat.value != null
-        ) {
+        if (stat && typeof stat.label === "string") {
           stats.set(stat.label, stat.value);
         }
       }
 
       const panels = platforms.map(platform =>
-        renderPanel(platform, data, stats, manual)
+        renderPanel(platform, stats, manual)
       );
 
       panels.push(renderTwitter(manual));
       container.replaceChildren(...panels);
 
-      if (!automaticAvailable) {
-        status.textContent =
-          "Automatic stats are currently unavailable.";
-      } else if (
-        platforms.some(platform => !stats.has(platform.mainStat))
-      ) {
-        status.textContent =
-          "Some automatic stats are unavailable. Missing values appear as —.";
-      } else {
-        status.textContent = "";
-      }
+      // Add one audience count per platform.
+      // Twitch paid subscribers are not included in this sum.
+      const audienceCounts = platforms.map(platform =>
+        parseCount(stats.get(platform.mainStat))
+      );
+
+      audienceCounts.push(
+        parseCount(manual?.twitter?.followers)
+      );
+
+      const available = audienceCounts.filter(
+        value => value !== null
+      );
+
+      const complete = available.length === audienceCounts.length;
+
+      const total = available.reduce(
+        (sum, count) => sum + count,
+        0
+      );
+
+      document.getElementById("total").textContent =
+        available.length ? total.toLocaleString("en-AU") : "—";
+
+      document.getElementById("summary-title").textContent =
+        complete
+          ? "Total followers across platforms"
+          : "Followers across available platforms";
+
+      document.getElementById("total-note").textContent =
+        available.length +
+        " of 6 platforms · includes YouTube subscribers · audiences may overlap";
+
+      status.textContent = complete
+        ? ""
+        : "Some follower counts are missing. The total includes available values only.";
     }
 
     load().catch(() => {
       document.getElementById("status").textContent =
-        "Unable to display stats. Please try again later.";
+        "Unable to display audience stats. Please try again later.";
     });
   </script>
 </body>
