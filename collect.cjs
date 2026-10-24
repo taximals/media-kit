@@ -3,9 +3,10 @@ const fs = require("node:fs/promises");
 
 async function main() {
   const browser = await chromium.launch();
+  let page;
 
   try {
-    const page = await browser.newPage();
+    page = await browser.newPage();
     page.setDefaultTimeout(60000);
 
     await page.goto("https://beacons.ai/taximals/mediakit", {
@@ -13,25 +14,27 @@ async function main() {
       timeout: 60000
     });
 
-    await page.getByRole("button", {
-      name: "Social Analytics - twitch - taximals",
-      exact: true
-    }).click();
+    // Twitch is the default section. Wait for its stats to load.
+    await page.waitForFunction(
+      () => {
+        const text = document.body.innerText;
+        return (
+          /AVG CONCURRENT VIEWERS/i.test(text) &&
+          /30 DAY WATCH HOURS/i.test(text)
+        );
+      },
+      { timeout: 60000 }
+    );
 
-    const panel = page.getByRole("button", {
-      name: /^Twitch - social stats title/
-    });
-
-    await panel.getByText("AVG CONCURRENT VIEWERS", {
-      exact: true
-    }).waitFor();
-
-    const text = await panel.innerText();
+    const text = await page.locator("body").innerText();
 
     function read(label) {
       const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const match = text.match(
-        new RegExp(escaped + "\\s+([\\d,.]+\\s*[kKmM]?)")
+        new RegExp(
+          escaped + "\\s+([\\d,.]+\\s*[kKmM]?)",
+          "i"
+        )
       );
 
       if (!match) {
@@ -41,6 +44,21 @@ async function main() {
       return match[1].trim();
     }
 
+    // Limit the follower search to the Twitch summary.
+    const summaryStart = text.search(/AVG STREAM VIEWS/i);
+    const precedingText = text.slice(0, summaryStart);
+    const followerMatches = [
+      ...precedingText.matchAll(
+        /\bFOLLOWERS\s+([\d,.]+\s*[kKmM]?)/gi
+      )
+    ];
+
+    if (!followerMatches.length) {
+      throw new Error("Could not read Twitch followers");
+    }
+
+    const followers = followerMatches.at(-1)[1].trim();
+
     const sync = text.match(
       /Data from last 30 days\s*\/\s*Last updated\s+([^\n]+)/i
     );
@@ -49,7 +67,10 @@ async function main() {
       collectedAt: new Date().toISOString(),
       beaconsUpdated: sync ? sync[1].trim() : "Not specified",
       stats: [
-        { label: "Twitch followers", value: read("FOLLOWERS") },
+        {
+          label: "Twitch followers",
+          value: followers
+        },
         {
           label: "Average concurrent viewers",
           value: read("AVG CONCURRENT VIEWERS")
@@ -70,12 +91,26 @@ async function main() {
     };
 
     await fs.mkdir("public", { recursive: true });
+
     await fs.writeFile(
       "public/data.json",
       JSON.stringify(data, null, 2)
     );
 
+    console.log("Collected stats successfully:");
     console.log(JSON.stringify(data, null, 2));
+  } catch (error) {
+    // Show what actually loaded if the stats were unavailable.
+    if (page) {
+      console.error("Page URL:", page.url());
+      console.error(
+        "Page text:",
+        (await page.locator("body").innerText()
+          .catch(() => "Unable to read page")).slice(0, 12000)
+      );
+    }
+
+    throw error;
   } finally {
     await browser.close();
   }
