@@ -116,9 +116,15 @@ async function main() {
     !tokens.access_token ||
     !tokens.refresh_token
   ) {
+    const errorCode =
+      typeof tokens.error === "string"
+        ? tokens.error
+        : "unknown_error";
+
     throw new Error(
-      "TikTok token refresh failed. " +
-      "Check your sandbox credentials and authorisation."
+      `TikTok token refresh failed. ` +
+      `HTTP status: ${tokenResponse.status}. ` +
+      `TikTok error code: ${errorCode}.`
     );
   }
 
