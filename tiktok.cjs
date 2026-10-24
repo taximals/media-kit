@@ -121,10 +121,27 @@ async function main() {
         ? tokens.error
         : "unknown_error";
 
+    let description = String(
+      tokens.error_description || "No description returned."
+    );
+
+    // Remove credentials if TikTok includes them in its message.
+    for (const value of [
+      clientKey,
+      clientSecret,
+      initialRefreshToken,
+      state.refreshToken
+    ]) {
+      if (value) {
+        description = description
+          .split(value).join("[REDACTED]")
+          .split(encodeURIComponent(value)).join("[REDACTED]");
+      }
+    }
+
     throw new Error(
       `TikTok token refresh failed. ` +
-      `HTTP status: ${tokenResponse.status}. ` +
-      `TikTok error code: ${errorCode}.`
+      `Error: ${errorCode}. Description: ${description}`
     );
   }
 
