@@ -26,20 +26,36 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Download repository
+        uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
+          package-manager-cache: false
 
-      - name: Install collector
-        run: npm install --no-save playwright@1.56.1
+      - name: Restore encrypted Twitch tokens
+        uses: actions/cache/restore@v4
+        with:
+          path: .twitch-state.enc
+          key: twitch-tokens-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            twitch-tokens-v1-
 
-      - name: Install browser
-        run: npx playwright install --with-deps chromium
-
-      - name: Collect Beacons stats
+      - name: Collect Twitch stats
+        env:
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          TWITCH_REFRESH_TOKEN: ${{ secrets.TWITCH_REFRESH_TOKEN }}
         run: node collect.cjs
+
+      - name: Save encrypted Twitch tokens
+        if: ${{ always() && hashFiles('.twitch-state.enc') != '' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .twitch-state.enc
+          key: twitch-tokens-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
