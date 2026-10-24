@@ -57,6 +57,11 @@ jobs:
           path: .twitch-state.enc
           key: twitch-tokens-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
+      - name: Collect YouTube stats
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: node youtube.cjs
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
