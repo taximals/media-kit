@@ -8,8 +8,7 @@
   <style>
     :root {
       --panel: #292929;
-      --border: #494043;
-      --accent: #c13545;
+      --border: #942E3A;
       --text: #ffffff;
       --muted: #c7bcc0;
     }
@@ -33,37 +32,28 @@
     }
 
     .summary {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 14px 24px;
       margin-bottom: 16px;
-      padding: 24px;
+      padding: 26px 20px;
       background: var(--panel);
-      border: 1px solid var(--border);
-      border-top: 4px solid var(--accent);
+      border: 3px solid var(--border);
       border-radius: 12px;
+      text-align: center;
     }
 
     .total {
-      font-size: clamp(32px, 6vw, 46px);
+      font-size: clamp(36px, 6vw, 48px);
       font-weight: bold;
-      line-height: 1.1;
+      line-height: 1.15;
       letter-spacing: -1.5px;
       font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
     }
 
     .summary-title {
-      margin: 0 0 7px;
+      margin: 10px 0 0;
       font-size: 14px;
-      font-weight: bold;
-    }
-
-    .summary-note {
-      margin: 0;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.6;
+      font-weight: normal;
+      line-height: 1.5;
     }
 
     .panels {
@@ -76,40 +66,14 @@
       min-width: 0;
       padding: 20px;
       background: var(--panel);
-      border: 1px solid var(--border);
+      border: 3px solid var(--border);
       border-radius: 12px;
     }
 
-    .heading {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 7px 12px;
-      margin-bottom: 20px;
-    }
-
     h2 {
-      margin: 0;
-      font-size: 13px;
+      margin: 0 0 20px;
+      font-size: 14px;
       font-weight: bold;
-    }
-
-    .handle {
-      color: var(--muted);
-      font-size: 10px;
-      text-decoration: none;
-      overflow-wrap: anywhere;
-    }
-
-    .handle:hover {
-      color: #ffffff;
-      text-decoration: underline;
-    }
-
-    .handle:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 4px;
     }
 
     .number {
@@ -168,10 +132,6 @@
       .panel {
         padding: 18px;
       }
-
-      .summary {
-        gap: 12px;
-      }
     }
   </style>
 </head>
@@ -181,15 +141,9 @@
     <section class="summary" aria-labelledby="summary-title">
       <div class="total" id="total">—</div>
 
-      <div>
-        <h1 class="summary-title" id="summary-title">
-          Total followers across platforms
-        </h1>
-
-        <p class="summary-note" id="total-note">
-          Followers + YouTube subscribers · audiences may overlap
-        </p>
-      </div>
+      <h1 class="summary-title" id="summary-title">
+        Total followers across platforms
+      </h1>
     </section>
 
     <div class="panels" id="panels"></div>
@@ -201,8 +155,6 @@
       {
         id: "twitch",
         title: "Twitch",
-        handle: "@taximals",
-        url: "https://www.twitch.tv/taximals",
         mainStat: "Twitch followers",
         unit: "followers",
         details: [
@@ -212,8 +164,6 @@
       {
         id: "youtube",
         title: "YouTube",
-        handle: "@taximalsvt",
-        url: "https://www.youtube.com/@taximalsvt",
         mainStat: "YouTube subscribers",
         unit: "subscribers",
         details: [
@@ -224,8 +174,6 @@
       {
         id: "instagram",
         title: "Instagram",
-        handle: "@taximalsvt",
-        url: "https://www.instagram.com/taximalsvt/",
         mainStat: "Instagram followers",
         unit: "followers",
         details: [
@@ -235,8 +183,6 @@
       {
         id: "tiktok",
         title: "TikTok",
-        handle: "@taximals",
-        url: "https://www.tiktok.com/@taximals",
         mainStat: "TikTok followers",
         unit: "followers",
         details: [
@@ -247,8 +193,6 @@
       {
         id: "bluesky",
         title: "Bluesky",
-        handle: "@taximals.bsky.social",
-        url: "https://bsky.app/profile/taximals.bsky.social",
         mainStat: "Bluesky followers",
         unit: "followers",
         details: [
@@ -284,8 +228,6 @@
       return node;
     }
 
-    // Collectors save whole numbers formatted with commas.
-    // Invalid or missing values remain missing rather than becoming zero.
     function parseCount(value) {
       if (typeof value === "number") {
         return Number.isSafeInteger(value) && value >= 0
@@ -316,21 +258,13 @@
         : value.toLocaleString("en-AU");
     }
 
-    function createPanel(titleText, handle, url, id) {
+    function createPanel(titleText, id) {
       const panel = element("section", "panel");
-      const heading = element("div", "heading");
       const title = element("h2", "", titleText);
 
       title.id = id + "-title";
       panel.setAttribute("aria-labelledby", title.id);
-
-      const link = element("a", "handle", handle);
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-
-      heading.append(title, link);
-      panel.append(heading);
+      panel.append(title);
 
       return panel;
     }
@@ -349,8 +283,6 @@
     function renderPanel(platform, stats, manual) {
       const panel = createPanel(
         platform.title,
-        platform.handle,
-        platform.url,
         platform.id
       );
 
@@ -381,11 +313,6 @@
           Number.isFinite(average) &&
           average >= 0
         ) {
-          const period =
-            typeof manual.period === "string" && manual.period.trim()
-              ? manual.period.trim()
-              : "period unspecified";
-
           addDetail(
             details,
             "CCV",
@@ -404,29 +331,13 @@
     }
 
     function renderTwitter(manual) {
-      const twitter = manual?.twitter;
-
-      const suppliedUsername =
-        typeof twitter?.username === "string"
-          ? twitter.username.trim().replace(/^@/, "")
-          : "";
-
-      const username = /^[A-Za-z0-9_]{1,15}$/.test(suppliedUsername)
-        ? suppliedUsername
-        : "taximalsVT";
-
-      const panel = createPanel(
-        "X / Twitter",
-        "@" + username,
-        "https://x.com/" + username,
-        "twitter"
-      );
+      const panel = createPanel("X / Twitter", "twitter");
 
       panel.append(
         element(
           "div",
           "number",
-          formatCount(parseCount(twitter?.followers))
+          formatCount(parseCount(manual?.twitter?.followers))
         ),
         element("div", "unit", "followers")
       );
@@ -470,8 +381,8 @@
       panels.push(renderTwitter(manual));
       container.replaceChildren(...panels);
 
-      // Add one audience count per platform.
-      // Twitch paid subscribers are not included in this sum.
+      // One audience count per platform, including YouTube subscribers.
+      // Twitch paid subscribers are not added a second time.
       const audienceCounts = platforms.map(platform =>
         parseCount(stats.get(platform.mainStat))
       );
@@ -480,32 +391,21 @@
         parseCount(manual?.twitter?.followers)
       );
 
-      const available = audienceCounts.filter(
+      const complete = audienceCounts.every(
         value => value !== null
       );
 
-      const complete = available.length === audienceCounts.length;
-
-      const total = available.reduce(
-        (sum, count) => sum + count,
-        0
-      );
-
-      document.getElementById("total").textContent =
-        available.length ? total.toLocaleString("en-AU") : "—";
-
-      document.getElementById("summary-title").textContent =
-        complete
-          ? "Total followers across platforms"
-          : "Followers across available platforms";
-
-      document.getElementById("total-note").textContent =
-        available.length +
-        " of 6 platforms · includes YouTube subscribers · audiences may overlap";
+      // Only display a total when all six counts are available.
+      document.getElementById("total").textContent = complete
+        ? audienceCounts.reduce(
+            (sum, count) => sum + count,
+            0
+          ).toLocaleString("en-AU")
+        : "—";
 
       status.textContent = complete
         ? ""
-        : "Some follower counts are missing. The total includes available values only.";
+        : "Some follower counts are unavailable. The total will appear when all counts are loaded.";
     }
 
     load().catch(() => {
