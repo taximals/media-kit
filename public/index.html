@@ -25,7 +25,7 @@
 
     .panels {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
     }
 
@@ -55,6 +55,7 @@
     a {
       color: #ffadb7;
       font-size: 11px;
+      overflow-wrap: anywhere;
       text-decoration: none;
     }
 
@@ -102,16 +103,6 @@
       line-height: 1.6;
     }
 
-    [hidden] {
-      display: none !important;
-    }
-
-    @media (max-width: 760px) {
-      .panels {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
     @media (max-width: 520px) {
       .panels {
         grid-template-columns: 1fr;
@@ -126,89 +117,69 @@
 
 <body>
   <main>
-    <div class="panels">
-      <section class="panel" aria-labelledby="twitch-title">
-        <div class="heading">
-          <h2 id="twitch-title">Twitch</h2>
-          <a
-            href="https://www.twitch.tv/taximals"
-            target="_blank"
-            rel="noopener noreferrer"
-          >@taximals</a>
-        </div>
-
-        <div class="number" id="twitch-followers">—</div>
-        <div class="unit">followers</div>
-
-        <div class="details">
-          <span id="twitch-subs-row" hidden>
-            Subscribers <strong id="twitch-subs">—</strong>
-          </span>
-
-          <span id="twitch-average-row" hidden>
-            Avg concurrent viewers
-            <strong id="twitch-average">—</strong>
-          </span>
-        </div>
-
-        <p class="note" id="twitch-manual-note" hidden></p>
-        <p class="note" id="twitch-updated"></p>
-      </section>
-
-      <section class="panel" aria-labelledby="youtube-title">
-        <div class="heading">
-          <h2 id="youtube-title">YouTube</h2>
-          <a
-            href="https://www.youtube.com/@taximalsvt"
-            target="_blank"
-            rel="noopener noreferrer"
-          >@taximalsvt</a>
-        </div>
-
-        <div class="number" id="youtube-subs">—</div>
-        <div class="unit">subscribers</div>
-
-        <div class="details">
-          <span id="youtube-views-row" hidden>
-            Total views <strong id="youtube-views">—</strong>
-          </span>
-
-          <span id="youtube-videos-row" hidden>
-            Public videos <strong id="youtube-videos">—</strong>
-          </span>
-        </div>
-
-        <p class="note">Subscriber count rounded by YouTube.</p>
-        <p class="note" id="youtube-updated"></p>
-      </section>
-
-      <section class="panel" aria-labelledby="instagram-title">
-        <div class="heading">
-          <h2 id="instagram-title">Instagram</h2>
-          <a
-            href="https://www.instagram.com/taximalsvt/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >@taximalsvt</a>
-        </div>
-
-        <div class="number" id="instagram-followers">—</div>
-        <div class="unit">followers</div>
-
-        <div class="details">
-          <span id="instagram-posts-row" hidden>
-            Posts <strong id="instagram-posts">—</strong>
-          </span>
-        </div>
-
-        <p class="note" id="instagram-updated"></p>
-      </section>
-    </div>
-
+    <div class="panels" id="panels"></div>
     <p id="status" role="status">Loading stats…</p>
   </main>
 
   <script>
+    const platforms = [
+      {
+        id: "twitch",
+        title: "Twitch",
+        handle: "@taximals",
+        url: "https://www.twitch.tv/taximals",
+        mainStat: "Twitch followers",
+        unit: "followers",
+        details: [
+          ["Subscribers", "Twitch subscribers"]
+        ],
+        timestamp: "collectedAt",
+        source: "Twitch API"
+      },
+      {
+        id: "youtube",
+        title: "YouTube",
+        handle: "@taximalsvt",
+        url: "https://www.youtube.com/@taximalsvt",
+        mainStat: "YouTube subscribers",
+        unit: "subscribers",
+        details: [
+          ["Total views", "YouTube total views"],
+          ["Public videos", "YouTube public videos"]
+        ],
+        timestamp: "youtubeCollectedAt",
+        source: "YouTube Data API",
+        note: "Subscriber count rounded by YouTube."
+      },
+      {
+        id: "instagram",
+        title: "Instagram",
+        handle: "@taximalsvt",
+        url: "https://www.instagram.com/taximalsvt/",
+        mainStat: "Instagram followers",
+        unit: "followers",
+        details: [
+          ["Posts", "Instagram posts"]
+        ],
+        timestamp: "instagramCollectedAt",
+        source: "Instagram API"
+      },
+      {
+        id: "tiktok",
+        title: "TikTok",
+        handle: "@taximals",
+        url: "https://www.tiktok.com/@taximals",
+        mainStat: "TikTok followers",
+        unit: "followers",
+        details: [
+          ["Total likes", "TikTok total likes"],
+          ["Public videos", "TikTok public videos"]
+        ],
+        timestamp: "tiktokCollectedAt",
+        source: "TikTok API"
+      }
+    ];
+
     async function getJSON(path) {
       const response = await fetch(path, {
         cache: "no-cache"
@@ -221,29 +192,34 @@
       return response.json();
     }
 
-    function displayStat(stats, label, valueId, rowId) {
-      const stat = stats.find(item => item.label === label);
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
 
-      if (!stat || stat.value == null) {
-        return false;
+      if (className) {
+        node.className = className;
       }
 
-      document.getElementById(valueId).textContent = stat.value;
-
-      if (rowId) {
-        document.getElementById(rowId).hidden = false;
+      if (text !== undefined) {
+        node.textContent = text;
       }
 
-      return true;
+      return node;
     }
 
-    function showUpdate(elementId, timestamp, source) {
-      const element = document.getElementById(elementId);
+    function addDetail(container, label, value) {
+      const item = element("span");
+      item.append(
+        document.createTextNode(label + " "),
+        element("strong", "", value)
+      );
+      container.append(item);
+    }
+
+    function updateText(timestamp, source) {
       const date = timestamp ? new Date(timestamp) : null;
 
       if (!date || Number.isNaN(date.getTime())) {
-        element.textContent = "Source: " + source;
-        return;
+        return "Source: " + source;
       }
 
       const formatted = date.toLocaleString("en-AU", {
@@ -255,133 +231,157 @@
         minute: "2-digit"
       });
 
-      element.textContent =
-        source + " · Updated " + formatted + " AEST";
+      return source + " · Updated " + formatted + " AEST";
     }
 
-    async function loadAutomaticStats() {
-      const status = document.getElementById("status");
+    function renderPanel(platform, data, stats, manual) {
+      const panel = element("section", "panel");
+      const heading = element("div", "heading");
 
-      try {
-        const data = await getJSON("data.json");
+      const title = element("h2", "", platform.title);
+      title.id = platform.id + "-title";
+      panel.setAttribute("aria-labelledby", title.id);
 
-        if (!Array.isArray(data.stats)) {
-          throw new Error("Invalid stats format");
+      const link = element("a", "", platform.handle);
+      link.href = platform.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+
+      heading.append(title, link);
+
+      panel.append(
+        heading,
+        element(
+          "div",
+          "number",
+          stats.get(platform.mainStat) ?? "—"
+        ),
+        element("div", "unit", platform.unit)
+      );
+
+      const details = element("div", "details");
+
+      for (const [label, key] of platform.details) {
+        if (stats.has(key)) {
+          addDetail(details, label, stats.get(key));
         }
-
-        const hasTwitch = displayStat(
-          data.stats,
-          "Twitch followers",
-          "twitch-followers"
-        );
-
-        displayStat(
-          data.stats,
-          "Twitch subscribers",
-          "twitch-subs",
-          "twitch-subs-row"
-        );
-
-        const hasYouTube = displayStat(
-          data.stats,
-          "YouTube subscribers",
-          "youtube-subs"
-        );
-
-        displayStat(
-          data.stats,
-          "YouTube total views",
-          "youtube-views",
-          "youtube-views-row"
-        );
-
-        displayStat(
-          data.stats,
-          "YouTube public videos",
-          "youtube-videos",
-          "youtube-videos-row"
-        );
-
-        const hasInstagram = displayStat(
-          data.stats,
-          "Instagram followers",
-          "instagram-followers"
-        );
-
-        displayStat(
-          data.stats,
-          "Instagram posts",
-          "instagram-posts",
-          "instagram-posts-row"
-        );
-
-        showUpdate(
-          "twitch-updated",
-          data.collectedAt,
-          "Twitch API"
-        );
-
-        showUpdate(
-          "youtube-updated",
-          data.youtubeCollectedAt,
-          "YouTube Data API"
-        );
-
-        showUpdate(
-          "instagram-updated",
-          data.instagramCollectedAt,
-          "Instagram API"
-        );
-
-        status.textContent =
-          hasTwitch && hasYouTube && hasInstagram
-            ? ""
-            : "Some stats are unavailable. Missing values appear as —.";
-      } catch (error) {
-        status.textContent =
-          "Automatic stats are currently unavailable.";
       }
-    }
 
-    async function loadManualStats() {
-      try {
-        const data = await getJSON("manual.json");
-        const average = data.averageConcurrentViewers;
+      let manualNote;
+
+      if (platform.id === "twitch" && manual) {
+        const average = manual.averageConcurrentViewers;
 
         if (
-          typeof average !== "number" ||
-          !Number.isFinite(average) ||
-          average < 0
+          typeof average === "number" &&
+          Number.isFinite(average) &&
+          average >= 0
         ) {
-          return;
+          addDetail(
+            details,
+            "Avg concurrent viewers",
+            average.toLocaleString("en-AU", {
+              maximumFractionDigits: 2
+            })
+          );
+
+          const notes = [
+            "Average: " + (manual.period || "period not specified"),
+            "manually entered"
+          ];
+
+          if (manual.updated) {
+            notes.push("checked " + manual.updated);
+          }
+
+          manualNote = notes.join(" · ");
         }
+      }
 
-        document.getElementById("twitch-average").textContent =
-          average.toLocaleString("en-AU", {
-            maximumFractionDigits: 2
-          });
+      if (details.childElementCount) {
+        panel.append(details);
+      }
 
-        document.getElementById("twitch-average-row").hidden = false;
+      if (manualNote) {
+        panel.append(element("p", "note", manualNote));
+      }
 
-        const details = [
-          "Average: " + (data.period || "period not specified"),
-          "manually entered"
-        ];
+      if (platform.note) {
+        panel.append(element("p", "note", platform.note));
+      }
 
-        if (data.updated) {
-          details.push("checked " + data.updated);
+      panel.append(
+        element(
+          "p",
+          "note",
+          updateText(data[platform.timestamp], platform.source)
+        )
+      );
+
+      return panel;
+    }
+
+    async function load() {
+      const status = document.getElementById("status");
+      const container = document.getElementById("panels");
+
+      const [automaticResult, manualResult] =
+        await Promise.allSettled([
+          getJSON("data.json"),
+          getJSON("manual.json")
+        ]);
+
+      let data = { stats: [] };
+      let automaticAvailable = false;
+
+      if (
+        automaticResult.status === "fulfilled" &&
+        Array.isArray(automaticResult.value.stats)
+      ) {
+        data = automaticResult.value;
+        automaticAvailable = true;
+      }
+
+      const manual =
+        manualResult.status === "fulfilled"
+          ? manualResult.value
+          : null;
+
+      const stats = new Map();
+
+      for (const stat of data.stats) {
+        if (
+          stat &&
+          typeof stat.label === "string" &&
+          stat.value != null
+        ) {
+          stats.set(stat.label, stat.value);
         }
+      }
 
-        const note = document.getElementById("twitch-manual-note");
-        note.textContent = details.join(" · ");
-        note.hidden = false;
-      } catch (error) {
-        // Manual stats are optional.
+      const panels = platforms.map(platform =>
+        renderPanel(platform, data, stats, manual)
+      );
+
+      container.replaceChildren(...panels);
+
+      if (!automaticAvailable) {
+        status.textContent =
+          "Automatic stats are currently unavailable.";
+      } else if (
+        platforms.some(platform => !stats.has(platform.mainStat))
+      ) {
+        status.textContent =
+          "Some stats are unavailable. Missing values appear as —.";
+      } else {
+        status.textContent = "";
       }
     }
 
-    loadAutomaticStats();
-    loadManualStats();
+    load().catch(() => {
+      document.getElementById("status").textContent =
+        "Unable to display stats. Please try again later.";
+    });
   </script>
 </body>
 </html>
